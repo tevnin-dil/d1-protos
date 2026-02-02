@@ -87,6 +87,8 @@ const ACCESS_MODELS: { id: AccessModel; title: string; description: string }[] =
 // Components
 // ─────────────────────────────────────────────────────────────
 
+type CreditLevel = "high" | "low" | "zero";
+
 function AccessModelTabs({
   activeModel,
   onChange,
@@ -112,6 +114,40 @@ function AccessModelTabs({
   );
 }
 
+function CreditLevelToggle({
+  creditLevel,
+  onChange,
+}: {
+  creditLevel: CreditLevel;
+  onChange: (level: CreditLevel) => void;
+}) {
+  return (
+    <div style={styles.globalCreditToggle}>
+      <span style={styles.globalCreditLabel}>Demo Credit Level:</span>
+      <div style={styles.globalCreditButtons}>
+        {(["high", "low", "zero"] as const).map((level) => (
+          <button
+            key={level}
+            onClick={() => onChange(level)}
+            style={{
+              ...styles.globalCreditButton,
+              ...(creditLevel === level ? styles.globalCreditButtonActive : {}),
+              ...(level === "high" ? styles.creditButtonHigh : {}),
+              ...(level === "low" ? styles.creditButtonLow : {}),
+              ...(level === "zero" ? styles.creditButtonZero : {}),
+              ...(creditLevel === level && level === "high" ? styles.creditButtonHighActive : {}),
+              ...(creditLevel === level && level === "low" ? styles.creditButtonLowActive : {}),
+              ...(creditLevel === level && level === "zero" ? styles.creditButtonZeroActive : {}),
+            }}
+          >
+            {level === "high" ? "Plenty (3,800)" : level === "low" ? "Running Low (150)" : "Depleted (0)"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ModelDescription({ model }: { model: AccessModel }) {
   const info = ACCESS_MODELS.find((m) => m.id === model);
   if (!info) return null;
@@ -128,16 +164,33 @@ function ModelDescription({ model }: { model: AccessModel }) {
 // Model 1: Unified Credit Pool
 // ─────────────────────────────────────────────────────────────
 
-function UnifiedPoolDemo() {
-  const [credits] = useState(USER_CREDITS);
+function UnifiedPoolDemo({ creditLevel }: { creditLevel: CreditLevel }) {
+  const getCredits = () => {
+    switch (creditLevel) {
+      case "high": return { total: 4250, used: 450, remaining: 3800 };
+      case "low": return { total: 4250, used: 4100, remaining: 150 };
+      case "zero": return { total: 4250, used: 4250, remaining: 0 };
+    }
+  };
+
+  const credits = getCredits();
 
   return (
     <div style={styles.demoContainer}>
       {/* Credit Balance Card */}
-      <div style={styles.creditCard}>
+      <div style={{
+        ...styles.creditCard,
+        ...(creditLevel === "zero" ? styles.creditCardDepleted : {}),
+      }}>
         <div style={styles.creditCardHeader}>
           <span style={styles.creditCardLabel}>AI Credits</span>
-          <span style={styles.creditCardBadge}>Unified Pool</span>
+          <span style={{
+            ...styles.creditCardBadge,
+            ...(creditLevel === "low" ? styles.creditCardBadgeYellow : {}),
+            ...(creditLevel === "zero" ? styles.creditCardBadgeRed : {}),
+          }}>
+            {creditLevel === "high" ? "Unified Pool" : creditLevel === "low" ? "Running Low" : "Depleted"}
+          </span>
         </div>
         <div style={styles.creditBalance}>
           <span style={styles.creditNumber}>{credits.remaining.toLocaleString()}</span>
@@ -148,7 +201,9 @@ function UnifiedPoolDemo() {
             <div
               style={{
                 ...styles.creditProgressFill,
-                width: `${((credits.total - credits.remaining) / credits.total) * 100}%`,
+                ...(creditLevel === "low" ? styles.creditProgressFillYellow : {}),
+                ...(creditLevel === "zero" ? styles.creditProgressFillRed : {}),
+                width: `${(credits.used / credits.total) * 100}%`,
               }}
             />
           </div>
@@ -157,13 +212,20 @@ function UnifiedPoolDemo() {
             <span>{credits.total.toLocaleString()} / month</span>
           </div>
         </div>
+        {creditLevel === "zero" && (
+          <div style={styles.creditRefreshNote}>
+            Credits refresh Feb 1 — 3 days away
+          </div>
+        )}
       </div>
 
       {/* Product Grid */}
       <div style={styles.sectionHeader}>
         <h3 style={styles.sectionTitle}>Use credits in any product</h3>
         <p style={styles.sectionSubtitle}>
-          Your credits work everywhere — no per-product limits
+          {creditLevel === "zero" 
+            ? "AI generation paused across products until credits refresh"
+            : "Your credits work everywhere — no per-product limits"}
         </p>
       </div>
 
@@ -174,13 +236,17 @@ function UnifiedPoolDemo() {
             style={{
               ...styles.productCard,
               ...(product.hasAccess ? {} : styles.productCardLocked),
+              ...(creditLevel === "zero" && product.hasAccess ? styles.productCardPaused : {}),
             }}
           >
             <span style={styles.productIcon}>{product.icon}</span>
             <span style={styles.productName}>{product.name}</span>
             {product.hasAccess ? (
-              <span style={styles.productCredits}>
-                {product.creditsUsed > 0 ? `${product.creditsUsed} used` : "Ready"}
+              <span style={{
+                ...styles.productCredits,
+                ...(creditLevel === "zero" ? styles.productCreditsPaused : {}),
+              }}>
+                {creditLevel === "zero" ? "Paused" : product.creditsUsed > 0 ? `${product.creditsUsed} used` : "Ready"}
               </span>
             ) : (
               <span style={styles.productLocked}>No seat</span>
@@ -216,17 +282,22 @@ function UnifiedPoolDemo() {
 // Model 2: Trial First
 // ─────────────────────────────────────────────────────────────
 
-function TrialFirstDemo() {
-  const [trialPhase, setTrialPhase] = useState<"active" | "ending" | "ended">("active");
+function TrialFirstDemo({ creditLevel }: { creditLevel: CreditLevel }) {
+  // Map credit level to trial phase
+  const trialPhase = creditLevel === "high" ? "active" : creditLevel === "low" ? "ending" : "ended";
 
   return (
     <div style={styles.demoContainer}>
       {/* Trial Status */}
       <div style={styles.trialCard}>
         <div style={styles.trialHeader}>
-          <span style={styles.trialBadge}>
+          <span style={{
+            ...styles.trialBadge,
+            ...(trialPhase === "ending" ? styles.trialBadgeEnding : {}),
+            ...(trialPhase === "ended" ? styles.trialBadgeEnded : {}),
+          }}>
             {trialPhase === "active" ? "✨ Unlimited AI Trial" : 
-             trialPhase === "ending" ? "⏳ Trial Ending Soon" : "Trial Ended"}
+             trialPhase === "ending" ? "⏳ Trial Ending Soon" : "✓ Trial Completed"}
           </span>
         </div>
         
@@ -304,25 +375,6 @@ function TrialFirstDemo() {
         )}
       </div>
 
-      {/* Phase Toggle for Demo */}
-      <div style={styles.demoControls}>
-        <span style={styles.demoControlLabel}>Demo phase:</span>
-        <div style={styles.demoControlButtons}>
-          {(["active", "ending", "ended"] as const).map((phase) => (
-            <button
-              key={phase}
-              onClick={() => setTrialPhase(phase)}
-              style={{
-                ...styles.demoControlButton,
-                ...(trialPhase === phase ? styles.demoControlButtonActive : {}),
-              }}
-            >
-              {phase === "active" ? "Active Trial" : phase === "ending" ? "Ending Soon" : "Post-Trial"}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Key Insight */}
       <div style={styles.insightCard}>
         <span style={styles.insightIcon}>💡</span>
@@ -340,9 +392,7 @@ function TrialFirstDemo() {
 // Model 3: Graceful Degradation
 // ─────────────────────────────────────────────────────────────
 
-function GracefulLimitsDemo() {
-  const [creditLevel, setCreditLevel] = useState<"high" | "low" | "zero">("high");
-
+function GracefulLimitsDemo({ creditLevel }: { creditLevel: CreditLevel }) {
   const getCreditsRemaining = () => {
     switch (creditLevel) {
       case "high": return 3800;
@@ -442,25 +492,6 @@ function GracefulLimitsDemo() {
         </div>
       )}
 
-      {/* Demo Controls */}
-      <div style={styles.demoControls}>
-        <span style={styles.demoControlLabel}>Demo credit level:</span>
-        <div style={styles.demoControlButtons}>
-          {(["high", "low", "zero"] as const).map((level) => (
-            <button
-              key={level}
-              onClick={() => setCreditLevel(level)}
-              style={{
-                ...styles.demoControlButton,
-                ...(creditLevel === level ? styles.demoControlButtonActive : {}),
-              }}
-            >
-              {level === "high" ? "Plenty" : level === "low" ? "Running Low" : "Depleted"}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Key Insight */}
       <div style={styles.insightCard}>
         <span style={styles.insightIcon}>💡</span>
@@ -478,7 +509,7 @@ function GracefulLimitsDemo() {
 // Model 4: Discovery Mode
 // ─────────────────────────────────────────────────────────────
 
-function DiscoveryModeDemo() {
+function DiscoveryModeDemo({ creditLevel }: { creditLevel: CreditLevel }) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
   const discoveryProducts = [
@@ -586,17 +617,42 @@ function DiscoveryModeDemo() {
       </div>
 
       {/* Cross-sell without pressure */}
-      <div style={styles.softSellCard}>
+      <div style={{
+        ...styles.softSellCard,
+        ...(creditLevel === "zero" ? styles.softSellCardMuted : {}),
+      }}>
         <span style={styles.softSellIcon}>🎯</span>
         <div style={styles.softSellContent}>
-          <strong>Based on your Boards usage</strong>
+          <strong>
+            {creditLevel === "zero" 
+              ? "Discover while you wait" 
+              : "Based on your Boards usage"}
+          </strong>
           <p style={styles.softSellText}>
-            Teams like yours often find Compliance AI saves 4+ hours per week on 
-            regulatory reporting. Want to explore?
+            {creditLevel === "zero"
+              ? "While your credits refresh, explore what other products can do. Preview is always free."
+              : "Teams like yours often find Compliance AI saves 4+ hours per week on regulatory reporting. Want to explore?"}
           </p>
         </div>
-        <button style={styles.softSellButton}>Show me</button>
+        <button style={styles.softSellButton}>
+          {creditLevel === "zero" ? "Explore" : "Show me"}
+        </button>
       </div>
+
+      {/* Credit status notice for discovery */}
+      {creditLevel !== "high" && (
+        <div style={{
+          ...styles.discoveryNotice,
+          ...(creditLevel === "zero" ? styles.discoveryNoticeZero : styles.discoveryNoticeLow),
+        }}>
+          <span>{creditLevel === "zero" ? "💡" : "ℹ️"}</span>
+          <span>
+            {creditLevel === "zero"
+              ? "Discovery mode is always available — even with zero credits. Explore freely."
+              : "Running low on credits? Discovery previews are free and don't use your balance."}
+          </span>
+        </div>
+      )}
 
       {/* Key Insight */}
       <div style={styles.insightCard}>
@@ -617,17 +673,18 @@ function DiscoveryModeDemo() {
 
 export default function CrossProductAccessPage() {
   const [activeModel, setActiveModel] = useState<AccessModel>("unified_pool");
+  const [creditLevel, setCreditLevel] = useState<CreditLevel>("high");
 
   const renderDemo = () => {
     switch (activeModel) {
       case "unified_pool":
-        return <UnifiedPoolDemo />;
+        return <UnifiedPoolDemo creditLevel={creditLevel} />;
       case "trial_first":
-        return <TrialFirstDemo />;
+        return <TrialFirstDemo creditLevel={creditLevel} />;
       case "graceful_limits":
-        return <GracefulLimitsDemo />;
+        return <GracefulLimitsDemo creditLevel={creditLevel} />;
       case "discovery_mode":
-        return <DiscoveryModeDemo />;
+        return <DiscoveryModeDemo creditLevel={creditLevel} />;
     }
   };
 
@@ -654,8 +711,18 @@ export default function CrossProductAccessPage() {
           </p>
         </header>
 
-        {/* Model Tabs */}
-        <AccessModelTabs activeModel={activeModel} onChange={setActiveModel} />
+        {/* Demo Controls */}
+        <div style={styles.demoControlsSection}>
+          <div style={styles.controlRow}>
+            <span style={styles.controlRowLabel}>UX Pattern:</span>
+            <AccessModelTabs activeModel={activeModel} onChange={setActiveModel} />
+          </div>
+          <div style={styles.controlsDivider} />
+          <div style={styles.controlRow}>
+            <span style={styles.controlRowLabel}>Credit Level:</span>
+            <CreditLevelToggle creditLevel={creditLevel} onChange={setCreditLevel} />
+          </div>
+        </div>
 
         {/* Model Description */}
         <ModelDescription model={activeModel} />
@@ -663,33 +730,6 @@ export default function CrossProductAccessPage() {
         {/* Demo Area */}
         <div style={styles.demoWrapper}>
           {renderDemo()}
-        </div>
-
-        {/* Summary Section */}
-        <div style={styles.summarySection}>
-          <h3 style={styles.summaryTitle}>Key Principles</h3>
-          <div style={styles.principlesGrid}>
-            <div style={styles.principleCard}>
-              <span style={styles.principleIcon}>🎁</span>
-              <strong>Value First</strong>
-              <p>Let users experience AI benefits before encountering any limits or paywalls.</p>
-            </div>
-            <div style={styles.principleCard}>
-              <span style={styles.principleIcon}>🌊</span>
-              <strong>Flow, Not Walls</strong>
-              <p>When limits exist, degrade gracefully. Never completely block essential work.</p>
-            </div>
-            <div style={styles.principleCard}>
-              <span style={styles.principleIcon}>🔭</span>
-              <strong>Discovery Without Risk</strong>
-              <p>Let users explore capabilities in products they don't own — curiosity, not pressure.</p>
-            </div>
-            <div style={styles.principleCard}>
-              <span style={styles.principleIcon}>🤝</span>
-              <strong>Trust Through Transparency</strong>
-              <p>Clear credit tracking and honest communication about what happens at limits.</p>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
@@ -769,20 +809,45 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 auto",
   },
   
+  // Demo Controls Section
+  demoControlsSection: {
+    padding: "20px 24px",
+    marginBottom: "32px",
+    background: "#FFFFFF",
+    border: "1px solid #E5E5E5",
+    borderRadius: "12px",
+  },
+  controlRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+  },
+  controlRowLabel: {
+    fontSize: "13px",
+    fontWeight: 600,
+    color: "#525252",
+    minWidth: "90px",
+    flexShrink: 0,
+  },
+  controlsDivider: {
+    height: "1px",
+    background: "#E5E5E5",
+    margin: "16px 0",
+  },
+  
   // Tabs
   tabsContainer: {
     display: "flex",
     gap: "8px",
-    justifyContent: "center",
-    marginBottom: "32px",
     flexWrap: "wrap",
+    flex: 1,
   },
   tab: {
-    padding: "10px 20px",
-    fontSize: "14px",
+    padding: "8px 16px",
+    fontSize: "13px",
     fontWeight: 500,
     color: "#525252",
-    background: "#FFFFFF",
+    background: "#F5F5F5",
     border: "1px solid #E5E5E5",
     borderRadius: "8px",
     cursor: "pointer",
@@ -791,6 +856,59 @@ const styles: Record<string, React.CSSProperties> = {
   tabActive: {
     background: "#171717",
     borderColor: "#171717",
+    color: "#FFFFFF",
+  },
+  
+  // Global Credit Toggle
+  globalCreditToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    flex: 1,
+  },
+  globalCreditLabel: {
+    display: "none",
+  },
+  globalCreditButtons: {
+    display: "flex",
+    gap: "8px",
+  },
+  globalCreditButton: {
+    padding: "8px 16px",
+    fontSize: "13px",
+    fontWeight: 500,
+    color: "#525252",
+    background: "#F5F5F5",
+    border: "1px solid #E5E5E5",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+  },
+  globalCreditButtonActive: {
+    fontWeight: 600,
+  },
+  creditButtonHigh: {
+    borderColor: "#D1FAE5",
+  },
+  creditButtonLow: {
+    borderColor: "#FEF3C7",
+  },
+  creditButtonZero: {
+    borderColor: "#FEE2E2",
+  },
+  creditButtonHighActive: {
+    background: "#059669",
+    borderColor: "#059669",
+    color: "#FFFFFF",
+  },
+  creditButtonLowActive: {
+    background: "#D97706",
+    borderColor: "#D97706",
+    color: "#FFFFFF",
+  },
+  creditButtonZeroActive: {
+    background: "#DC2626",
+    borderColor: "#DC2626",
     color: "#FFFFFF",
   },
   
@@ -885,6 +1003,32 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "12px",
     color: "#A3A3A3",
   },
+  creditCardDepleted: {
+    background: "#450A0A",
+  },
+  creditCardBadgeYellow: {
+    color: "#D97706",
+    background: "rgba(217, 119, 6, 0.15)",
+  },
+  creditCardBadgeRed: {
+    color: "#FCA5A5",
+    background: "rgba(220, 38, 38, 0.2)",
+  },
+  creditProgressFillYellow: {
+    background: "linear-gradient(90deg, #D97706, #FBBF24)",
+  },
+  creditProgressFillRed: {
+    background: "linear-gradient(90deg, #DC2626, #F87171)",
+  },
+  creditRefreshNote: {
+    marginTop: "16px",
+    padding: "12px",
+    background: "rgba(255, 255, 255, 0.1)",
+    borderRadius: "8px",
+    fontSize: "13px",
+    color: "#FCA5A5",
+    textAlign: "center",
+  },
   
   // Section Headers
   sectionHeader: {
@@ -941,6 +1085,13 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#A3A3A3",
     display: "block",
   },
+  productCardPaused: {
+    borderColor: "#FEE2E2",
+    background: "#FEF2F2",
+  },
+  productCreditsPaused: {
+    color: "#DC2626",
+  },
   productUsageBar: {
     height: "4px",
     background: "#F5F5F5",
@@ -986,6 +1137,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#7C3AED",
     background: "#EDE9FE",
     borderRadius: "16px",
+  },
+  trialBadgeEnding: {
+    color: "#D97706",
+    background: "#FEF3C7",
+  },
+  trialBadgeEnded: {
+    color: "#059669",
+    background: "#D1FAE5",
   },
   trialTitle: {
     fontSize: "24px",
@@ -1444,35 +1603,25 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     flexShrink: 0,
   },
-  
-  // Summary Section
-  summarySection: {
-    marginTop: "48px",
-    paddingTop: "48px",
-    borderTop: "1px solid #E5E5E5",
+  softSellCardMuted: {
+    background: "#EFF6FF",
+    borderColor: "#BFDBFE",
   },
-  summaryTitle: {
-    fontSize: "20px",
-    fontWeight: 600,
-    color: "#171717",
-    margin: "0 0 24px 0",
-    textAlign: "center",
+  discoveryNotice: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    fontSize: "13px",
   },
-  principlesGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "16px",
+  discoveryNoticeLow: {
+    background: "#FEF3C7",
+    color: "#92400E",
   },
-  principleCard: {
-    padding: "20px",
-    background: "#FFFFFF",
-    border: "1px solid #E5E5E5",
-    borderRadius: "12px",
-  },
-  principleIcon: {
-    fontSize: "24px",
-    display: "block",
-    marginBottom: "12px",
+  discoveryNoticeZero: {
+    background: "#D1FAE5",
+    color: "#065F46",
   },
   
   // Footer

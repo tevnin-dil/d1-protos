@@ -19,6 +19,12 @@ export default function Home() {
             </span>
           </li>
           <li style={{ marginTop: '12px' }}>
+            <a href="/experiments/cross-product-access">Cross-Product Access</a>
+            <span style={{ fontSize: '12px', color: '#737373', marginLeft: '8px' }}>
+              — AI discovery without commercial friction
+            </span>
+          </li>
+          <li style={{ marginTop: '12px' }}>
             <a href="/experiments/contextual-launch-pads">Contextual Launch Pads</a>
             <span style={{ fontSize: '12px', color: '#737373', marginLeft: '8px' }}>
               — Distributed micro-prompts where work happens
@@ -44,12 +50,7 @@ export default function Home() {
               — Output-focused mobile UX for GRC workflows
             </span>
           </li>
-          <li style={{ marginTop: '12px' }}>
-            <a href="/experiments/cross-product-access">Cross-Product Access</a>
-            <span style={{ fontSize: '12px', color: '#737373', marginLeft: '8px' }}>
-              — AI discovery without commercial friction
-            </span>
-          </li>
+          
         </ul>
       </Card>
     </main>

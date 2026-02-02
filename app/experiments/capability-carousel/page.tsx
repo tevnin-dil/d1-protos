@@ -7,7 +7,7 @@
  * through rotating example prompts tied to user role and recent activity,
  * making limitations feel like focused expertise rather than missing features.
  * 
- * Layout matches the Diligent-style dashboard with sidebar, greeting, 
+ * Layout matches the Diligent-style dashbnoard with sidebar, greeting, 
  * quick actions, and What's New panel.
  */
 
