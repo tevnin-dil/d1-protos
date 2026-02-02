@@ -25,6 +25,12 @@ export default function Home() {
             </span>
           </li>
           <li style={{ marginTop: '12px' }}>
+            <a href="/experiments/data-availability">Data Availability</a>
+            <span style={{ fontSize: '12px', color: '#737373', marginLeft: '8px' }}>
+              — Do we have this data already?
+            </span>
+          </li>
+          <li style={{ marginTop: '12px' }}>
             <a href="/experiments/contextual-launch-pads">Contextual Launch Pads</a>
             <span style={{ fontSize: '12px', color: '#737373', marginLeft: '8px' }}>
               — Distributed micro-prompts where work happens
